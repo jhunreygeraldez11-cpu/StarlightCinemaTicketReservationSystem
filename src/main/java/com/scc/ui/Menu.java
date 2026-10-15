@@ -15,7 +15,7 @@ public class Menu {
             System.out.println("1. Register Account");
             System.out.println("2. Login");
             System.out.println("3. Exit");
-            System.out.print("Pili og option (1-3): ");
+            System.out.print("choice option (1-3): ");
             int choice = scanner.nextInt();
             scanner.nextLine();
 
@@ -28,10 +28,10 @@ public class Menu {
                     break;
                 case 3:
                     exit = true;
-                    System.out.println("Salamat sa paggamit sa Starlight Cinema System!");
+                    System.out.println("Thank you for using Starlight Cinema System!");
                     break;
                 default:
-                    System.out.println("Invalid choice! Sulayi pag-usab.");
+                    System.out.println("Invalid choice! Choice again.");
             }
         }
     }
