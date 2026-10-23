@@ -17,7 +17,7 @@ public class UserDao {
 
     public void defaultAdminGenerator(Connection conn) {
         String checkSql = "SELECT COUNT(*) FROM Users WHERE roles = 'ADMIN'";
-        String insertSql = "INSERT INTO users(username, password, role, status) VALUES('admin','admin123','ADMIN','APPROVED')";
+        String insertSql = "INSERT INTO users(username, password, roles, status) VALUES('admin','admin123','ADMIN','APPROVED')";
 
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(checkSql)) {
@@ -31,16 +31,26 @@ public class UserDao {
     }
 
     public boolean registerUser(String username, String password, String role) {
-        String sql = "INSERT INTO users(username, password, role, status) VALUES(?, ?, ?, 'PENDING')";
+        String normalizedRole = role.toUpperCase();
+        // Automatically approve if role is ADMIN, otherwise keep as PENDING
+        String status = normalizedRole.equals("ADMIN") ? "APPROVED" : "PENDING";
+
+        String sql = "INSERT INTO users(username, password, roles, status) VALUES(?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, username);
             pstmt.setString(2, password);
-            pstmt.setString(3, role.toUpperCase());
+            pstmt.setString(3, normalizedRole);
+            pstmt.setString(4, status);
             pstmt.executeUpdate();
-            System.out.println("SUCCESSFUL REGISTRATION, waiting for approval.");
+
+            if (status.equals("APPROVED")) {
+                System.out.println("SUCCESSFUL REGISTRATION. Admin account automatically approved.");
+            } else {
+                System.out.println("SUCCESSFUL REGISTRATION, waiting for approval.");
+            }
             return true;
         } catch (SQLException e) {
             System.err.println("FAILED: " + e.getMessage());
@@ -61,7 +71,7 @@ public class UserDao {
                         rs.getInt("id"),
                         rs.getString("username"),
                         rs.getString("password"),
-                        rs.getString("role"),
+                        rs.getString("roles"),
                         rs.getString("status")
                 );
             }
@@ -73,7 +83,7 @@ public class UserDao {
 
     public List<User> getAllUsers() {
         List<User> usersList = new ArrayList<>();
-        String sql = "SELECT id, username, password, role, status FROM users";
+        String sql = "SELECT id, username, password, roles, status FROM users";
 
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -83,8 +93,8 @@ public class UserDao {
                         rs.getInt("id"),
                         rs.getString("username"),
                         rs.getString("password"),
-                        rs.getString("role"),
-                        rs.getString("Status")
+                        rs.getString("roles"),
+                        rs.getString("status")
                 ));
             }
         } catch (SQLException e) {
@@ -96,7 +106,7 @@ public class UserDao {
 
     public List<User> getPendingUser() {
         List<User> pendingList = new ArrayList<>();
-        String sql = "SELECT id, username, password, role, status FROM users WHERE status = 'PENDING'";
+        String sql = "SELECT id, username, password, roles, status FROM users WHERE status = 'PENDING'";
 
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -107,7 +117,7 @@ public class UserDao {
                         rs.getInt("id"),
                         rs.getString("username"),
                         rs.getString("password"),
-                        rs.getString("role"),
+                        rs.getString("roles"),
                         rs.getString("status")
                 ));
             }
