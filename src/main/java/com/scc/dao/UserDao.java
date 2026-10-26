@@ -1,17 +1,32 @@
 package com.scc.dao;
 
 import com.scc.model.User;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
 public class UserDao {
 
-    public UserDao() {
-        try (Connection conn = DatabaseConnection.getConnection()) {
-            defaultAdminGenerator(conn);
+    public boolean updateUserRoleAndStatus(int userId, String newRole, String newStatus) {
+        String sql = "UPDATE users SET roles = ?, status = ? WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, newRole.toUpperCase());
+            pstmt.setString(2, newStatus.toUpperCase());
+            pstmt.setInt(3, userId);
+
+            int rowsAffected = pstmt.executeUpdate();
+            return rowsAffected > 0;
+
         } catch (SQLException e) {
-            System.err.println("Error default seeding admin: " + e.getMessage());
+            System.out.println("Database error during update: " + e.getMessage());
+            return false;
         }
     }
 
@@ -32,7 +47,6 @@ public class UserDao {
 
     public boolean registerUser(String username, String password, String role) {
         String normalizedRole = role.toUpperCase();
-        // Automatically approve if role is ADMIN, otherwise keep as PENDING
         String status = normalizedRole.equals("ADMIN") ? "APPROVED" : "PENDING";
 
         String sql = "INSERT INTO users(username, password, roles, status) VALUES(?, ?, ?, ?)";
