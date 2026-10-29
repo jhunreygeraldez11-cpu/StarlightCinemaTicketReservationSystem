@@ -107,7 +107,7 @@ public class AdminMenu {
 
     private String readValidRole() {
         while (true) {
-            System.out.print("Enter new role (STUDENT, TEACHER, ADMIN, CASHIER, MANAGER) [0 to cancel]: ");
+            System.out.print("Enter new role (ADMIN, CASHIER, MANAGER) [0 to cancel]: ");
             String role = scanner.nextLine().trim().toUpperCase();
 
             if (role.equals("0")) return "0";
