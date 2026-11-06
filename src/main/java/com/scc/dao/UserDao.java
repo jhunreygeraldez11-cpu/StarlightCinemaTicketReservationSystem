@@ -11,7 +11,9 @@ import java.util.List;
 
 public class UserDao {
 
-    public boolean updateUserRoleAndStatus(int userId, String newRole, String newStatus) {
+    private final ActivityLogDao logDao = new ActivityLogDao();
+
+    public boolean updateUserRoleAndStatus(int adminUserId, int targetUserId, String newRole, String newStatus) {
         String sql = "UPDATE users SET roles = ?, status = ? WHERE id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -19,19 +21,54 @@ public class UserDao {
 
             pstmt.setString(1, newRole.toUpperCase());
             pstmt.setString(2, newStatus.toUpperCase());
-            pstmt.setInt(3, userId);
+            pstmt.setInt(3, targetUserId);
 
             int rowsAffected = pstmt.executeUpdate();
-            return rowsAffected > 0;
+            if (rowsAffected > 0) {
+                // Auto-Log Role/Status Update
+                logDao.logAction(
+                        adminUserId,
+                        "USER_UPDATED",
+                        String.format("Admin ID %d updated User %d role to %s and status to %s", adminUserId, targetUserId, newRole.toUpperCase(), newStatus.toUpperCase())
+                );
+                return true;
+            }
 
         } catch (SQLException e) {
             System.out.println("Database error during update: " + e.getMessage());
-            return false;
         }
+        return false;
+    }
+
+    public boolean approveUser(int adminUserId, int targetUserId) {
+        String sql = "UPDATE users SET status = 'APPROVED' WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, targetUserId);
+            int rowsUpdated = pstmt.executeUpdate();
+
+            if (rowsUpdated > 0) {
+                System.out.println(" -> USER ID: " + targetUserId + " APPROVED SUCCESSFULLY!");
+                // Auto-Log User Approval
+                logDao.logAction(
+                        adminUserId,
+                        "USER_APPROVED",
+                        String.format("Admin ID %d approved account for User ID %d", adminUserId, targetUserId)
+                );
+                return true;
+            } else {
+                System.out.println("ID NOT FOUND.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error approving user: " + e.getMessage());
+        }
+        return false;
     }
 
     public void defaultAdminGenerator(Connection conn) {
-        String checkSql = "SELECT COUNT(*) FROM Users WHERE roles = 'ADMIN'";
+        String checkSql = "SELECT COUNT(*) FROM users WHERE roles = 'ADMIN'";
         String insertSql = "INSERT INTO users(username, password, roles, status) VALUES('admin','admin123','ADMIN','APPROVED')";
 
         try (Statement stmt = conn.createStatement();
@@ -116,49 +153,5 @@ public class UserDao {
         }
 
         return usersList;
-    }
-
-    public List<User> getPendingUser() {
-        List<User> pendingList = new ArrayList<>();
-        String sql = "SELECT id, username, password, roles, status FROM users WHERE status = 'PENDING'";
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                pendingList.add(new User(
-                        rs.getInt("id"),
-                        rs.getString("username"),
-                        rs.getString("password"),
-                        rs.getString("roles"),
-                        rs.getString("status")
-                ));
-            }
-        } catch (SQLException e) {
-            System.err.println("Error Fetching User: " + e.getMessage());
-        }
-        return pendingList;
-    }
-
-    public boolean approveUser(int userID){
-        String sql = "UPDATE users SET status = 'APPROVED' WHERE id = ?";
-
-        try(Connection conn = DatabaseConnection.getConnection()){
-            PreparedStatement pstmt = conn.prepareStatement(sql);
-
-            pstmt.setInt(1, userID);
-            int rowsUpdated = pstmt.executeUpdate();
-
-            if(rowsUpdated > 0 ){
-                System.out.println(" ->USER ID: "+userID+" APPROVED SUCCESSFULLY!");
-                return  true;
-            }else {
-                System.out.println("ID NOT FOUND.");
-            }
-        }catch (SQLException e){
-            System.out.println("Error Fetching User: "+e.getMessage());
-        }
-        return  false;
     }
 }
